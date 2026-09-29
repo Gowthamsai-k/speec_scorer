@@ -107,9 +107,15 @@ def build_lora_phonetic_scorer(model_path_or_name: str = "ai4bharat/indicwav2vec
     local_dir = MODELS_DIR / "indicwav2vec-hindi"
     load_target = str(local_dir) if local_dir.exists() else model_path_or_name
 
-    print(f"[Phonetic Scorer]: Initializing IndicWav2Vec model from {load_target}...")
+    print(f"[Phonetic Scorer]: Initializing Wav2Vec model from {load_target}...")
     try:
-        cfg = AutoConfig.from_pretrained(load_target)
+        try:
+            cfg = AutoConfig.from_pretrained(load_target)
+        except Exception:
+            print(f"[Phonetic Scorer]: Gated repo fallback to open baseline 'facebook/wav2vec2-base-960h'...")
+            load_target = "facebook/wav2vec2-base-960h"
+            cfg = AutoConfig.from_pretrained(load_target)
+            
         cfg.vocab_size = len(ARPABET_VOCAB)
         indic_w2v = IndicWav2VecPhonemeCTC.from_pretrained(load_target, config=cfg, ignore_mismatched_sizes=True)
 

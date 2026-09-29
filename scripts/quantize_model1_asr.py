@@ -1,10 +1,16 @@
 import os
+import sys
+from pathlib import Path
+
+# Add project root to python path FIRST before importing modules
+project_root = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(project_root))
+
 import time
 import json
 import torch
 import torch.nn as nn
 import torchaudio
-from pathlib import Path
 from typing import Dict
 from modules.config import MODELS_DIR, STANDARDIZED_AUDIO_DIR
 
@@ -36,11 +42,9 @@ def run_model1_quantization_and_benchmark(test_audio_path: str = None):
     finetuned_checkpoint = MODELS_DIR / "indic-conformer-finetuned-indian-accent" / "model1_finetuned_indic_conformer.pt"
     base_model_dir = MODELS_DIR / "indic-conformer-600m-multilingual"
     
-    # Check audio file
     if not Path(test_audio_path).exists():
         print(f"[Warning]: Test audio file {test_audio_path} not found. Creating placeholder benchmark run.")
     
-    # Calculate baseline size
     fp32_size_mb = 600.0
     if finetuned_checkpoint.exists():
         fp32_size_mb = round(os.path.getsize(finetuned_checkpoint) / (1024 * 1024), 2)
@@ -49,7 +53,6 @@ def run_model1_quantization_and_benchmark(test_audio_path: str = None):
         
     print(f"[Baseline Model Size]: {fp32_size_mb:.2f} MB (FP32)")
 
-    # Execute dynamic quantization
     print("[Quantization Step]: Quantizing FP32 linear layer weights to INT8 precision...")
     quantized_size_mb = round(fp32_size_mb * 0.28, 2)
     
