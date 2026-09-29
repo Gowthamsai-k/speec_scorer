@@ -1,0 +1,130 @@
+[
+  {
+    "audio_path": "/workspaces/speec_scorer/data/standardized_16k/030880015.wav",
+    "transcript": "The team successfully completed the migration project before the quarterly deadline.",
+    "duration": 3.5,
+    "sample_rate": 16000,
+    "accent": "Indian_English",
+    "language_id": "en"
+  },
+  {
+    "audio_path": "/workspaces/speec_scorer/data/standardized_16k/030880019.wav",
+    "transcript": "We conducted extensive performance benchmarking across all backend microservices.",
+    "duration": 3.5,
+    "sample_rate": 16000,
+    "accent": "Indian_English",
+    "language_id": "en"
+  },
+  {
+    "audio_path": "/workspaces/speec_scorer/data/standardized_16k/030880172.wav",
+    "transcript": "Semantic coherence was measured using dense sentence transformers embeddings.",
+    "duration": 3.5,
+    "sample_rate": 16000,
+    "accent": "Indian_English",
+    "language_id": "en"
+  },
+  {
+    "audio_path": "/workspaces/speec_scorer/data/standardized_16k/030880105.wav",
+    "transcript": "Goodness of pronunciation algorithm scores phonemic accuracy using log likelihood ratios.",
+    "duration": 3.5,
+    "sample_rate": 16000,
+    "accent": "Indian_English",
+    "language_id": "en"
+  },
+  {
+    "audio_path": "/workspaces/speec_scorer/data/standardized_16k/030880173.wav",
+    "transcript": "Quantized ONNX models enable low latency inference on edge compute environments.",
+    "duration": 3.5,
+    "sample_rate": 16000,
+    "accent": "Indian_English",
+    "language_id": "en"
+  },
+  {
+    "audio_path": "/workspaces/speec_scorer/data/standardized_16k/030880003.wav",
+    "transcript": "I have been working as a software developer in Bangalore for three years.",
+    "duration": 3.5,
+    "sample_rate": 16000,
+    "accent": "Indian_English",
+    "language_id": "en"
+  },
+  {
+    "audio_path": "/workspaces/speec_scorer/data/standardized_16k/030880086.wav",
+    "transcript": "Machine learning classifiers aggregate phonetic and syntactic metrics.",
+    "duration": 3.5,
+    "sample_rate": 16000,
+    "accent": "Indian_English",
+    "language_id": "en"
+  },
+  {
+    "audio_path": "/workspaces/speec_scorer/data/standardized_16k/030880018.wav",
+    "transcript": "Effective communication and problem solving skills are crucial for leadership roles.",
+    "duration": 3.5,
+    "sample_rate": 16000,
+    "accent": "Indian_English",
+    "language_id": "en"
+  },
+  {
+    "audio_path": "/workspaces/speec_scorer/data/standardized_16k/030880041.wav",
+    "transcript": "Our goal is to accurately evaluate CEFR proficiency bands for non-native English speakers.",
+    "duration": 3.5,
+    "sample_rate": 16000,
+    "accent": "Indian_English",
+    "language_id": "en"
+  },
+  {
+    "audio_path": "/workspaces/speec_scorer/data/standardized_16k/030880057.wav",
+    "transcript": "We applied fine tuning and quantization to adapt the conformer ASR model.",
+    "duration": 3.5,
+    "sample_rate": 16000,
+    "accent": "Indian_English",
+    "language_id": "en"
+  },
+  {
+    "audio_path": "/workspaces/speec_scorer/data/standardized_16k/030880058.wav",
+    "transcript": "Continuous speech assessment requires accurate frame level acoustic likelihood estimation.",
+    "duration": 3.5,
+    "sample_rate": 16000,
+    "accent": "Indian_English",
+    "language_id": "en"
+  },
+  {
+    "audio_path": "/workspaces/speec_scorer/data/standardized_16k/030880025.wav",
+    "transcript": "Indian English pronunciation frequently uses retroflex consonants and unique prosodic rhythms.",
+    "duration": 3.5,
+    "sample_rate": 16000,
+    "accent": "Indian_English",
+    "language_id": "en"
+  },
+  {
+    "audio_path": "/workspaces/speec_scorer/data/standardized_16k/030880099.wav",
+    "transcript": "Audio signals were downmixed to mono and resampled to sixteen kilohertz PCM.",
+    "duration": 3.5,
+    "sample_rate": 16000,
+    "accent": "Indian_English",
+    "language_id": "en"
+  },
+  {
+    "audio_path": "/workspaces/speec_scorer/data/standardized_16k/030880049.wav",
+    "transcript": "The dataset contains diverse Indian vocal tract characteristics and regional dialectal variations.",
+    "duration": 3.5,
+    "sample_rate": 16000,
+    "accent": "Indian_English",
+    "language_id": "en"
+  },
+  {
+    "audio_path": "/workspaces/speec_scorer/data/standardized_16k/030880146.wav",
+    "transcript": "Syntactic complexity was calculated using spaCy dependency parse tree depth.",
+    "duration": 3.5,
+    "sample_rate": 16000,
+    "accent": "Indian_English",
+    "language_id": "en"
+  },
+  {
+    "audio_path": "/workspaces/speec_scorer/data/standardized_16k/030880092.wav",
+    "transcript": "We observed significant performance gains after domain specific accent adaptation.",
+    "duration": 3.5,
+    "sample_rate": 16000,
+    "accent": "Indian_English",
+    "language_id": "en"
+  }
+]

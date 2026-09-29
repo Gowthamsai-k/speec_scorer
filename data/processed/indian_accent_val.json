@@ -1,0 +1,42 @@
+[
+  {
+    "audio_path": "/workspaces/speec_scorer/data/standardized_16k/030880067.wav",
+    "transcript": "The acoustic model processes audio inputs at fifty hertz frame rate.",
+    "duration": 3.5,
+    "sample_rate": 16000,
+    "accent": "Indian_English",
+    "language_id": "en"
+  },
+  {
+    "audio_path": "/workspaces/speec_scorer/data/standardized_16k/030880123.wav",
+    "transcript": "The automated system provides objective feedback across all six CEFR bands.",
+    "duration": 3.5,
+    "sample_rate": 16000,
+    "accent": "Indian_English",
+    "language_id": "en"
+  },
+  {
+    "audio_path": "/workspaces/speec_scorer/data/standardized_16k/sample1.wav",
+    "transcript": "Sample Indian English utterance for speech assessment.",
+    "duration": 3.5,
+    "sample_rate": 16000,
+    "accent": "Indian_English",
+    "language_id": "en"
+  },
+  {
+    "audio_path": "/workspaces/speec_scorer/data/standardized_16k/030880096.wav",
+    "transcript": "The candidate demonstrated fluent delivery with minor grammatical hesitations.",
+    "duration": 3.5,
+    "sample_rate": 16000,
+    "accent": "Indian_English",
+    "language_id": "en"
+  },
+  {
+    "audio_path": "/workspaces/speec_scorer/data/standardized_16k/030880131.wav",
+    "transcript": "Deep learning models require balanced multi-rater calibration target scores.",
+    "duration": 3.5,
+    "sample_rate": 16000,
+    "accent": "Indian_English",
+    "language_id": "en"
+  }
+]
