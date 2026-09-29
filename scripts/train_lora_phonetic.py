@@ -46,7 +46,7 @@ def run_lora_phoneme_finetuning(dataset_manifest_path: str = None, num_epochs: i
         model = nn.DataParallel(model)
 
     optimizer = optim.AdamW(model.parameters(), lr=lr)
-    scaler = torch.cuda.amp.GradScaler(enabled=torch.cuda.is_available())
+    scaler = torch.amp.GradScaler('cuda', enabled=torch.cuda.is_available())
     ctc_loss_fn = nn.CTCLoss(blank=0, zero_infinity=True)
 
     model.train()
@@ -56,7 +56,7 @@ def run_lora_phoneme_finetuning(dataset_manifest_path: str = None, num_epochs: i
         audio_batch = torch.randn(batch_size, 16000 * 2, device=device)
         
         optimizer.zero_grad()
-        with torch.cuda.amp.autocast(enabled=torch.cuda.is_available()):
+        with torch.amp.autocast('cuda', enabled=torch.cuda.is_available()):
             logits = model(audio_batch)
             log_probs = torch.log_softmax(logits, dim=-1).transpose(0, 1)
             

@@ -44,6 +44,15 @@ class IndicWav2VecPhonemeCTC(Wav2Vec2PreTrainedModel):
         self.phoneme_head = nn.Linear(config.hidden_size, len(ARPABET_VOCAB))
         self.post_init()
 
+    def get_input_embeddings(self):
+        return None
+
+    def set_input_embeddings(self, value):
+        pass
+
+    def get_output_embeddings(self):
+        return self.phoneme_head
+
     def forward(self, input_values, attention_mask=None):
         outputs = self.wav2vec2(input_values, attention_mask=attention_mask)
         hidden_states = self.dropout(outputs.last_hidden_state)
@@ -132,7 +141,8 @@ def build_lora_phonetic_scorer(model_path_or_name: str = "ai4bharat/indicwav2vec
             lora_alpha=32,
             target_modules=["q_proj", "v_proj", "k_proj", "out_proj"],
             lora_dropout=0.05,
-            bias="none"
+            bias="none",
+            modules_to_save=["phoneme_head"]
         )
         phonetic_scorer_model = get_peft_model(indic_w2v, peft_config).to(device)
         phonetic_scorer_model.print_trainable_parameters()
