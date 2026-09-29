@@ -1,8 +1,11 @@
 import os
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 import torch
 import torch.nn as nn
 import numpy as np
-from pathlib import Path
 from typing import List, Dict, Tuple
 from transformers import AutoConfig, Wav2Vec2Model, Wav2Vec2PreTrainedModel
 from peft import LoraConfig, get_peft_model
@@ -49,10 +52,6 @@ def calculate_aligned_gop(
     aligned_phones: List[str], 
     gamma: float = 1.8
 ) -> List[Dict]:
-    """
-    Calculates sub-millisecond Forced-Aligned Allophone-Aware Goodness of Pronunciation (GOP)
-    over frame posteriors at 50 Hz. Maps log-likelihood ratios to diagnostic score [0, 100].
-    """
     log_probs = torch.log_softmax(logits, dim=-1).squeeze(0).cpu().numpy()
     T_frames = log_probs.shape[0]
     
@@ -81,7 +80,6 @@ def calculate_aligned_gop(
         max_compete_logprobs = np.max(segment_probs[:, non_allophone_ids], axis=-1)
         
         raw_gop = float(np.mean(max_allo_logprobs - max_compete_logprobs))
-        
         score_100 = 100.0 / (1.0 + np.exp(-gamma * raw_gop))
         
         if score_100 >= 75.0:

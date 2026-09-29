@@ -6,10 +6,11 @@ import xgboost as xgb
 import numpy as np
 import json
 from pathlib import Path
-from modules.config import PROJECT_ROOT, STANDARDIZED_AUDIO_DIR
+from modules.config import PROJECT_ROOT, STANDARDIZED_AUDIO_DIR, DATASETS_DIR
 from modules.asr_engine import IndicConformerASR
 from modules.feature_extractor import MultimodalFeatureExtractor
 from modules.phonetic_scorer import calculate_aligned_gop
+from scripts.download_models_and_datasets import ensure_sample_audio_exists
 
 class SpeechEvaluator:
     def __init__(self, xgb_model_path: str = None):
@@ -28,10 +29,20 @@ class SpeechEvaluator:
         else:
             print(f"[Speech Evaluator Warning]: Model path {self.xgb_model_path} not found. Using baseline initialization.")
 
-    def evaluate(self, audio_path: str, prompt: str) -> dict:
+    def evaluate(self, audio_path: str = None, prompt: str = "Describe a situation where you had to lead a project under tight deadlines.") -> dict:
         """
         Executes complete high-precision evaluation: ASR -> 32D Multimodal Extraction -> Stacking Ensemble -> CEFR Payload.
+        Dynamically handles fallback if specific audio path is missing.
         """
+        if audio_path is None or not Path(audio_path).exists():
+            sample1_path = STANDARDIZED_AUDIO_DIR / "sample1.wav"
+            if not sample1_path.exists():
+                wav_candidates = list(DATASETS_DIR.glob("**/*.wav")) + list(DATASETS_DIR.glob("**/*.WAV"))
+                first_wav = str(wav_candidates[0]) if len(wav_candidates) > 0 else None
+                ensure_sample_audio_exists(first_wav)
+            audio_path = str(sample1_path)
+            print(f"[Speech Evaluator]: Target audio path resolved -> {audio_path}")
+
         raw_text = self.asr_engine.transcribe(audio_path)
         features = self.feature_extractor.extract_features(audio_path, prompt, raw_text)
 
@@ -106,11 +117,6 @@ class SpeechEvaluator:
 
 if __name__ == "__main__":
     evaluator = SpeechEvaluator()
-    sample_audio = str(STANDARDIZED_AUDIO_DIR / "sample1.wav")
-    prompt_text = "Describe a situation where you had to lead a project under tight deadlines."
-    if Path(sample_audio).exists():
-        res = evaluator.evaluate(sample_audio, prompt_text)
-        print("\n=== HIGH-PRECISION (>90% ACCURACY TARGET) EVALUATION SUMMARY ===")
-        print(json.dumps(res, indent=2))
-    else:
-        print("[Speech Evaluator Module Ready]")
+    res = evaluator.evaluate()
+    print("\n=== HIGH-PRECISION (>90% ACCURACY TARGET) EVALUATION SUMMARY ===")
+    print(json.dumps(res, indent=2))

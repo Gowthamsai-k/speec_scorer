@@ -1,10 +1,13 @@
 import os
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 import torch
 import torchaudio
 import soundfile as sf
 import numpy as np
 import re
-from pathlib import Path
 from modules.config import MODELS_DIR
 
 INDIAN_ALLOPHONES = {
@@ -28,11 +31,6 @@ class MultimodalFeatureExtractor:
         print("[Feature Extractor]: Initializing Upgraded 32-Dimensional Multimodal Feature Extractor Engine...")
 
     def extract_features(self, audio_path: str, prompt: str, raw_transcript: str) -> np.ndarray:
-        """
-        Extracts expanded 32-dimensional feature vector combining acoustic phonetics,
-        disfluency rates, formant clarity, syntactic parse trees, and semantic embeddings.
-        """
-        # Load audio waveform
         try:
             data, sr = sf.read(audio_path)
             wav = torch.from_numpy(data).float()
@@ -44,12 +42,10 @@ class MultimodalFeatureExtractor:
             wav, sr = torchaudio.load(audio_path)
         total_sec = max(wav.shape[1] / float(sr), 0.5)
 
-        # 1. Linguistic & Lexical Breakdown
         words = [w.lower().strip(".,!?") for w in raw_transcript.split() if w.strip()]
         num_words = max(len(words), 1)
         unique_words = len(set(words))
         
-        # 2. Fluency & Disfluency Calculations
         speech_rate = num_words / total_sec
         articulation_rate = speech_rate * 1.15
         
@@ -61,7 +57,6 @@ class MultimodalFeatureExtractor:
             if words[i] == words[i+1]:
                 repair_count += 1
 
-        # 3. Advanced Lexical Metrics
         lemmatized_ttr = round(float(unique_words / np.sqrt(num_words)), 2)
         awl_count = sum(1 for w in words if w in ACADEMIC_WORDS)
         awl_ratio = round(float(awl_count / num_words), 3)
@@ -69,13 +64,11 @@ class MultimodalFeatureExtractor:
         discourse_count = sum(1 for w in words if w in DISCOURSE_MARKERS)
         discourse_density = round(float(discourse_count / max(num_words / 10.0, 1.0)), 2)
 
-        # 4. Formant & Spectral Stability Proxies
         wav_np = wav.squeeze(0).cpu().numpy()
         f0_variance = float(np.std(wav_np) * 100.0) if len(wav_np) > 0 else 18.5
         f1_f2_area = float(1200.0 + (num_words * 45.0))
         shimmer_stability = float(np.clip(1.0 - (repair_count * 0.05), 0.70, 0.98))
 
-        # 5. Assemble 32-Dimensional Feature Vector
         features = [
             86.5,                               # [0] mean_gop
             87.2,                               # [1] vowel_gop_mean

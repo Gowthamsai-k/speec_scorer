@@ -1,17 +1,18 @@
+import os
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 import numpy as np
 import pandas as pd
 import xgboost as xgb
-from pathlib import Path
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
 from sklearn.metrics import root_mean_squared_error, r2_score
 import statsmodels.api as sm
+from modules.config import PROJECT_ROOT
 
 def calibrate_mfrm_ground_truth(ratings_records: list) -> pd.DataFrame:
-    """
-    Removes rater severity bias via Two-Way Fixed Effects OLS.
-    Projects latent theta onto CEFR continuous continuum [1.00, 6.00].
-    """
     df = pd.DataFrame(ratings_records)
     ols_fit = sm.OLS.from_formula("raw_score ~ C(utterance_id) + C(prompt_id)", data=df).fit()
     
@@ -28,7 +29,6 @@ def calibrate_mfrm_ground_truth(ratings_records: list) -> pd.DataFrame:
     vals = np.array(list(latent_thetas.values()))
     mu, sigma = np.mean(vals), np.std(vals)
 
-    # Continuous CEFR continuum scaling: anchor mean = 3.20 (B1), scale = 0.95
     records = []
     for uid, th in latent_thetas.items():
         z = (th - mu) / (sigma + 1e-8)
@@ -37,13 +37,8 @@ def calibrate_mfrm_ground_truth(ratings_records: list) -> pd.DataFrame:
     return pd.DataFrame(records)
 
 class CEFRStackingEnsembleHead:
-    """
-    Stage 2 Stacking Ensemble Regressor Head:
-    Combines XGBoost Regressor, Gradient Boosting, and Random Forest base models
-    for high-precision CEFR continuous score [1.00, 6.00] and discrete band prediction.
-    """
-    def __init__(self, model_save_path: str = "cefr_xgboost_head.json"):
-        self.model_save_path = model_save_path
+    def __init__(self, model_save_path: str = None):
+        self.model_save_path = model_save_path if model_save_path else str(PROJECT_ROOT / "cefr_xgboost_head.json")
         self.xgb_model = xgb.XGBRegressor(
             n_estimators=350,
             max_depth=5,
@@ -65,17 +60,15 @@ class CEFRStackingEnsembleHead:
             max_depth=6,
             random_state=42
         )
-        self.meta_weights = [0.50, 0.30, 0.20] # Stacking weights for XGBoost, GB, RF
+        self.meta_weights = [0.50, 0.30, 0.20]
 
     def fit(self, X: np.ndarray, y: np.ndarray):
         X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.15, random_state=42)
 
-        # Fit Base Learners
         self.xgb_model.fit(X_train, y_train, eval_set=[(X_val, y_val)], verbose=False)
         self.gb_model.fit(X_train, y_train)
         self.rf_model.fit(X_train, y_train)
 
-        # Stacking Evaluation
         p1 = self.xgb_model.predict(X_val)
         p2 = self.gb_model.predict(X_val)
         p3 = self.rf_model.predict(X_val)
@@ -86,7 +79,6 @@ class CEFRStackingEnsembleHead:
         rmse = root_mean_squared_error(y_val, ensemble_preds)
         r2 = r2_score(y_val, ensemble_preds)
         
-        # Calculate exact CEFR band accuracy
         b_true = np.round(y_val).astype(int)
         b_pred = np.round(ensemble_preds).astype(int)
         exact_acc = np.mean(b_true == b_pred) * 100.0
@@ -108,7 +100,7 @@ class CEFRStackingEnsembleHead:
         preds = (self.meta_weights[0] * p1) + (self.meta_weights[1] * p2) + (self.meta_weights[2] * p3)
         return np.clip(preds, 1.00, 6.00)
 
-def train_and_save_xgboost_head(X: np.ndarray, y: np.ndarray, model_save_path: str = "cefr_xgboost_head.json"):
+def train_and_save_xgboost_head(X: np.ndarray, y: np.ndarray, model_save_path: str = None):
     ensemble = CEFRStackingEnsembleHead(model_save_path)
     ensemble.fit(X, y)
     return ensemble.xgb_model

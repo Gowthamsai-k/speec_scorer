@@ -1,8 +1,11 @@
 import os
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 import torch
 import torchaudio
 import json
-from pathlib import Path
 from transformers import AutoModel
 from modules.config import MODELS_DIR
 
@@ -50,10 +53,6 @@ class IndicConformerASR:
             self.model = None
 
     def transcribe(self, audio_path: str, language_id: str = "en") -> str:
-        """
-        Transcribes audio using the RNN-T decoder configured for Indian English.
-        Applies accent adaptation and quantized weights when available.
-        """
         if self.model is None:
             return "We conducted extensive performance benchmarking across all backend microservices."
             

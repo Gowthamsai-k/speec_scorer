@@ -1,5 +1,12 @@
 [
   {
+    "utterance_id": "sample1",
+    "audio_path": "/workspaces/speec_scorer/data/raw/sample1.wav",
+    "transcript": "Sample utterance transcript for model fine tuning and assessment.",
+    "prompt_id": "prompt_default",
+    "accent": "Indian_English"
+  },
+  {
     "utterance_id": "030880003",
     "audio_path": "/workspaces/speec_scorer/data/standardized_16k/030880003.wav",
     "transcript": "Sample utterance transcript for model fine tuning and assessment.",
