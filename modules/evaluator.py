@@ -91,6 +91,46 @@ class SpeechEvaluator:
         dummy_logits = torch.randn(1, 50, 44)
         phoneme_diagnostics = calculate_aligned_gop(dummy_logits, sample_phones)
 
+        # Compute normalized 0-10 skill scores and candidate performance metrics
+        gop_acc = float(features[0])  # 0 to 100
+        pron_score = round(float(np.clip(gop_acc / 10.0, 1.0, 10.0)), 1)
+
+        sps = float(features[5])
+        artic_sps = float(features[6])
+        pause_ratio = float(features[7])
+        speech_wpm = int(round(sps * 39.5))
+        artic_wpm = int(round(artic_sps * 39.5))
+
+        if pause_ratio < 0.15:
+            pause_level = "Minimal Pauses"
+        elif pause_ratio <= 0.30:
+            pause_level = "Moderate Pauses"
+        else:
+            pause_level = "High Pause Level"
+
+        task_relevance = float(features[18])
+        if task_fulfillment == "ON_TOPIC":
+            task_relevance_label = "High Relevance"
+        elif task_fulfillment == "PARTIALLY_RELEVANT":
+            task_relevance_label = "Partially Relevant"
+        else:
+            task_relevance_label = "Off-Topic"
+
+        coherence = float(features[19])
+        if coherence >= 0.75:
+            coherence_label = "High Coherence"
+        elif coherence >= 0.50:
+            coherence_label = "Moderate Coherence"
+        else:
+            coherence_label = "Low Coherence"
+
+        fluency_score = round(float(np.clip((sps / 4.2) * 8.0 + (1.0 - min(pause_ratio, 0.5)) * 2.0, 1.0, 10.0)), 1)
+        tree_depth = float(features[11])
+        clause_density = float(features[12])
+        grammar_score = round(float(np.clip((tree_depth / 5.0) * 5.0 + clause_density * 2.5, 1.0, 10.0)), 1)
+        c1_c2_ratio = float(features[16])
+        vocab_score = round(float(np.clip(task_relevance * 4.0 + coherence * 4.0 + (c1_c2_ratio + 0.1) * 2.0, 1.0, 10.0)), 1)
+
         return {
             "assessment_metadata": {
                 "sample_id": Path(audio_path).stem,
@@ -103,6 +143,19 @@ class SpeechEvaluator:
                 "cefr_continuous": continuous_score,
                 "confidence_interval_95": [ci_lower, ci_upper],
                 "exact_accuracy_target": ">90%"
+            },
+            "skill_scores": {
+                "pronunciation": pron_score,
+                "fluency": fluency_score,
+                "grammar": grammar_score,
+                "vocabulary": vocab_score
+            },
+            "performance": {
+                "speech_rate_wpm": speech_wpm,
+                "articulation_rate_wpm": artic_wpm,
+                "pause_level": pause_level,
+                "task_relevance_label": task_relevance_label,
+                "coherence_label": coherence_label
             },
             "quadrant_breakdown": {
                 "pronunciation": {
@@ -137,7 +190,7 @@ class SpeechEvaluator:
             },
             "transcript": {
                 "raw": raw_text,
-                "punctuated": raw_text.capitalize() + "."
+                "punctuated": raw_text.capitalize() + "." if raw_text else ""
             },
             "phoneme_diagnostics": phoneme_diagnostics
         }
