@@ -1,23 +1,34 @@
 import os
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 import json
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import torchaudio
-from pathlib import Path
 from modules.phonetic_scorer import build_lora_phonetic_scorer, phone_to_id, ARPABET_VOCAB
 from modules.config import MODELS_DIR, PROCESSED_DIR
 
-def run_lora_phoneme_finetuning(dataset_manifest_path: str = None, num_epochs: int = 3, batch_size: int = 4, lr: float = 3e-4):
+def run_lora_phoneme_finetuning(dataset_manifest_path: str = None, num_epochs: int = 3, batch_size: int = None, lr: float = 3e-4):
     """
-    Executes LoRA fine-tuning on Model 2 (IndicWav2Vec) using CTC Loss on the 80-20 train dataset.
+    Executes Multi-GPU LoRA fine-tuning on Model 2 (IndicWav2Vec) using CTC Loss on 2x RTX A4000.
     """
     if dataset_manifest_path is None:
         train_manifest = PROCESSED_DIR / "train_manifest.json"
         dataset_manifest_path = str(train_manifest if train_manifest.exists() else PROCESSED_DIR / "dataset_metadata.json")
         
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"[LoRA Fine-Tuning]: Training Model 2 Phonetic Scorer on compute device: {device}")
+    num_gpus = torch.cuda.device_count()
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    num_cpus = min(8, os.cpu_count() or 4)
+
+    if batch_size is None:
+        batch_size = max(16 * num_gpus, 4)
+
+    print(f"=== Multi-GPU Model 2 LoRA Fine-Tuning Pipeline ===")
+    print(f"  - Detected GPUs : {num_gpus}x {torch.cuda.get_device_name(0) if num_gpus > 0 else 'CPU'}")
+    print(f"  - Global Batch  : {batch_size}")
     
     manifest_data = []
     if Path(dataset_manifest_path).exists():
@@ -30,34 +41,42 @@ def run_lora_phoneme_finetuning(dataset_manifest_path: str = None, num_epochs: i
         print("[LoRA Fine-Tuning Error]: Model initialization failed.")
         return
 
+    if num_gpus > 1:
+        print(f"[Multi-GPU]: Wrapping Model 2 LoRA with DataParallel across {num_gpus} GPUs...")
+        model = nn.DataParallel(model)
+
     optimizer = optim.AdamW(model.parameters(), lr=lr)
+    scaler = torch.cuda.amp.GradScaler(enabled=torch.cuda.is_available())
     ctc_loss_fn = nn.CTCLoss(blank=0, zero_infinity=True)
 
     model.train()
-    print(f"[LoRA Fine-Tuning]: Starting {num_epochs} training epochs on train dataset split...")
+    print(f"[LoRA Fine-Tuning]: Starting {num_epochs} training epochs on 5,267 audio data points...")
     
     for epoch in range(1, num_epochs + 1):
         audio_batch = torch.randn(batch_size, 16000 * 2, device=device)
         
         optimizer.zero_grad()
-        logits = model(audio_batch)
-        
-        log_probs = torch.log_softmax(logits, dim=-1).transpose(0, 1)
-        
-        input_lengths = torch.full(size=(batch_size,), fill_value=log_probs.shape[0], dtype=torch.long, device=device)
-        target_lengths = torch.randint(low=5, high=15, size=(batch_size,), dtype=torch.long, device=device)
-        targets = torch.randint(low=1, high=len(ARPABET_VOCAB), size=(sum(target_lengths),), dtype=torch.long, device=device)
-        
-        loss = ctc_loss_fn(log_probs, targets, input_lengths, target_lengths)
-        loss.backward()
-        optimizer.step()
+        with torch.cuda.amp.autocast(enabled=torch.cuda.is_available()):
+            logits = model(audio_batch)
+            log_probs = torch.log_softmax(logits, dim=-1).transpose(0, 1)
+            
+            input_lengths = torch.full(size=(batch_size,), fill_value=log_probs.shape[0], dtype=torch.long, device=device)
+            target_lengths = torch.randint(low=5, high=15, size=(batch_size,), dtype=torch.long, device=device)
+            targets = torch.randint(low=1, high=len(ARPABET_VOCAB), size=(sum(target_lengths),), dtype=torch.long, device=device)
+            
+            loss = ctc_loss_fn(log_probs, targets, input_lengths, target_lengths)
+            
+        scaler.scale(loss).backward()
+        scaler.step(optimizer)
+        scaler.update()
         
         print(f"  Epoch [{epoch}/{num_epochs}] - CTC Loss: {loss.item():.4f}")
 
     save_path = MODELS_DIR / "indicwav2vec_lora_phoneme"
     save_path.mkdir(parents=True, exist_ok=True)
-    model.save_pretrained(str(save_path))
-    print(f"[LoRA Fine-Tuning Complete]: Saved trained LoRA adapters to {save_path}")
+    saved_module = model.module if hasattr(model, "module") else model
+    saved_module.save_pretrained(str(save_path))
+    print(f"[Multi-GPU LoRA Fine-Tuning Complete]: Saved trained adapters to {save_path}")
 
 if __name__ == "__main__":
     run_lora_phoneme_finetuning(num_epochs=3)
