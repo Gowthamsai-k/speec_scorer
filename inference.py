@@ -129,7 +129,7 @@ class SpeechInferenceEngine:
             "=" * 68,
             "         INDIAN ENGLISH CEFR SPEECH ASSESSMENT REPORT           ",
             "=" * 68,
-            f"Question Prompt   : {meta.get('target_prompt', 'N/A')}",
+            f"Question Prompt   : {meta.get('target_prompt', 'N/A')} (Fulfillment: {meta.get('task_fulfillment', 'ON_TOPIC')})",
             f"Audio Duration    : {meta.get('duration_seconds', 0):.2f}s",
             "-" * 68,
             f"OVERALL CEFR BAND : {scores.get('cefr_band', 'N/A')}  (Continuous Score: {scores.get('cefr_continuous', 0.0):.2f} / 6.00)",

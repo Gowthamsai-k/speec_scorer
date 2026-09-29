@@ -21,6 +21,8 @@ INDIAN_ALLOPHONES = {
     "IH": {"IH", "IY"}
 }
 
+from sentence_transformers import SentenceTransformer
+
 DISfluency_TOKENS = {"uh", "um", "like", "you know", "basically", "actually", "i mean", "sort of"}
 DISCOURSE_MARKERS = {"furthermore", "however", "consequently", "nevertheless", "therefore", "although", "moreover", "in addition", "on the other hand", "specifically"}
 ACADEMIC_WORDS = {"coordinate", "benchmarking", "microservices", "performance", "extending", "analysis", "demonstrated", "significant", "assessment", "evaluation", "proficiency"}
@@ -29,6 +31,14 @@ class MultimodalFeatureExtractor:
     def __init__(self, models_dir: str = None):
         self.models_dir = Path(models_dir) if models_dir else MODELS_DIR
         print("[Feature Extractor]: Initializing Upgraded 32-Dimensional Multimodal Feature Extractor Engine...")
+        bge_path = self.models_dir / "bge-small-en-v1.5"
+        try:
+            load_target = str(bge_path) if bge_path.exists() else "BAAI/bge-small-en-v1.5"
+            self.embedder = SentenceTransformer(load_target)
+            print("[Feature Extractor]: Loaded BGE-Small-en-v1.5 for dynamic Task Relevance embedding.")
+        except Exception as e:
+            print(f"[Feature Extractor Warning]: Sentence embedder fallback: {e}")
+            self.embedder = None
 
     def extract_features(self, audio_path: str, prompt: str, raw_transcript: str) -> np.ndarray:
         try:
@@ -69,6 +79,22 @@ class MultimodalFeatureExtractor:
         f1_f2_area = float(1200.0 + (num_words * 45.0))
         shimmer_stability = float(np.clip(1.0 - (repair_count * 0.05), 0.70, 0.98))
 
+        # Dynamic Task Relevance using BGE-small dense embeddings
+        task_relevance = 0.50
+        if self.embedder is not None and prompt and raw_transcript:
+            try:
+                emb_p = self.embedder.encode(prompt, normalize_embeddings=True)
+                emb_t = self.embedder.encode(raw_transcript, normalize_embeddings=True)
+                task_relevance = float(np.dot(emb_p, emb_t))
+                task_relevance = float(np.clip(task_relevance, -1.0, 1.0))
+            except Exception:
+                task_relevance = 0.50
+        elif prompt and raw_transcript:
+            p_words = set(re.findall(r"\w+", prompt.lower()))
+            t_words = set(re.findall(r"\w+", raw_transcript.lower()))
+            overlap = len(p_words.intersection(t_words)) / max(len(p_words), 1)
+            task_relevance = float(np.clip(0.30 + (overlap * 0.70), 0.0, 1.0))
+
         features = [
             86.5,                               # [0] mean_gop
             87.2,                               # [1] vowel_gop_mean
@@ -88,7 +114,7 @@ class MultimodalFeatureExtractor:
             0.34,                               # [15] pct_b1_b2
             0.14,                               # [16] pct_c1_c2
             58.4,                               # [17] mtld_diversity
-            0.88,                               # [18] task_relevance
+            float(task_relevance),              # [18] task_relevance
             0.82,                               # [19] local_coherence_mu
             0.06,                               # [20] local_coherence_sd
             14.2,                               # [21] masked_perplexity
@@ -101,7 +127,7 @@ class MultimodalFeatureExtractor:
             awl_ratio,                          # [28] awl_academic_word_rt
             lemmatized_ttr,                     # [29] lemmatized_ttr
             discourse_density,                  # [30] discourse_marker_density
-            0.89                                # [31] bge_large_context_sim
+            float(task_relevance)               # [31] bge_large_context_sim
         ]
         return np.array(features, dtype=np.float32)
 

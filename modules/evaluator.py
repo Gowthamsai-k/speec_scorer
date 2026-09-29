@@ -58,6 +58,25 @@ class SpeechEvaluator:
         else:
             continuous_score = 4.28
 
+        # Task Relevance Gating (Official CEFR / IELTS Task Achievement Rule)
+        # If the candidate's response is off-topic, apply task fulfillment cap
+        task_relevance = float(features[18])
+        if task_relevance < 0.50:
+            # Severely off-topic (e.g. unrelated prompt vs pre-recorded speech)
+            # Caps proficiency at B1 (Threshold)
+            relevance_factor = max(0.0, (task_relevance - 0.15) / 0.35)
+            target_cap = 2.50 + (relevance_factor * 0.90)
+            continuous_score = min(continuous_score, target_cap)
+            task_fulfillment = "OFF_TOPIC"
+        elif task_relevance < 0.65:
+            # Partially off-topic / tangential: caps at B2 (Vantage)
+            relevance_factor = (task_relevance - 0.50) / 0.15
+            target_cap = 3.40 + (relevance_factor * 0.80)
+            continuous_score = min(continuous_score, target_cap)
+            task_fulfillment = "PARTIALLY_RELEVANT"
+        else:
+            task_fulfillment = "ON_TOPIC"
+
         continuous_score = round(float(np.clip(continuous_score, 1.00, 6.00)), 2)
         band_index = int(round(np.clip(continuous_score, 1.0, 6.0)))
         cefr_levels = {1: "A1", 2: "A2", 3: "B1", 4: "B2", 5: "C1", 6: "C2"}
@@ -76,7 +95,8 @@ class SpeechEvaluator:
             "assessment_metadata": {
                 "sample_id": Path(audio_path).stem,
                 "duration_seconds": 6.84,
-                "target_prompt": prompt
+                "target_prompt": prompt,
+                "task_fulfillment": task_fulfillment
             },
             "scores": {
                 "cefr_band": assigned_band,
