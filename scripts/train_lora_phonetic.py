@@ -24,7 +24,7 @@ def run_lora_phoneme_finetuning(dataset_manifest_path: str = None, num_epochs: i
     num_cpus = min(8, os.cpu_count() or 4)
 
     if batch_size is None:
-        batch_size = max(16 * num_gpus, 4)
+        batch_size = max(16 * num_gpus, 2)
 
     print(f"=== Multi-GPU Model 2 LoRA Fine-Tuning Pipeline ===")
     print(f"  - Detected GPUs : {num_gpus}x {torch.cuda.get_device_name(0) if num_gpus > 0 else 'CPU'}")
