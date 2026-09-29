@@ -1,9 +1,9 @@
-
 import numpy as np
 import pandas as pd
 import xgboost as xgb
 from pathlib import Path
 from sklearn.model_selection import train_test_split
+from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
 from sklearn.metrics import root_mean_squared_error, r2_score
 import statsmodels.api as sm
 
@@ -36,37 +36,87 @@ def calibrate_mfrm_ground_truth(ratings_records: list) -> pd.DataFrame:
         records.append({"utterance_id": uid, "cefr_target": round(float(cefr_val), 2)})
     return pd.DataFrame(records)
 
+class CEFRStackingEnsembleHead:
+    """
+    Stage 2 Stacking Ensemble Regressor Head:
+    Combines XGBoost Regressor, Gradient Boosting, and Random Forest base models
+    for high-precision CEFR continuous score [1.00, 6.00] and discrete band prediction.
+    """
+    def __init__(self, model_save_path: str = "cefr_xgboost_head.json"):
+        self.model_save_path = model_save_path
+        self.xgb_model = xgb.XGBRegressor(
+            n_estimators=350,
+            max_depth=5,
+            learning_rate=0.025,
+            subsample=0.85,
+            colsample_bytree=0.85,
+            objective="reg:squarederror",
+            random_state=42
+        )
+        self.gb_model = GradientBoostingRegressor(
+            n_estimators=200,
+            max_depth=4,
+            learning_rate=0.03,
+            subsample=0.85,
+            random_state=42
+        )
+        self.rf_model = RandomForestRegressor(
+            n_estimators=150,
+            max_depth=6,
+            random_state=42
+        )
+        self.meta_weights = [0.50, 0.30, 0.20] # Stacking weights for XGBoost, GB, RF
+
+    def fit(self, X: np.ndarray, y: np.ndarray):
+        X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.15, random_state=42)
+
+        # Fit Base Learners
+        self.xgb_model.fit(X_train, y_train, eval_set=[(X_val, y_val)], verbose=False)
+        self.gb_model.fit(X_train, y_train)
+        self.rf_model.fit(X_train, y_train)
+
+        # Stacking Evaluation
+        p1 = self.xgb_model.predict(X_val)
+        p2 = self.gb_model.predict(X_val)
+        p3 = self.rf_model.predict(X_val)
+        
+        ensemble_preds = (self.meta_weights[0] * p1) + (self.meta_weights[1] * p2) + (self.meta_weights[2] * p3)
+        ensemble_preds = np.clip(ensemble_preds, 1.00, 6.00)
+        
+        rmse = root_mean_squared_error(y_val, ensemble_preds)
+        r2 = r2_score(y_val, ensemble_preds)
+        
+        # Calculate exact CEFR band accuracy
+        b_true = np.round(y_val).astype(int)
+        b_pred = np.round(ensemble_preds).astype(int)
+        exact_acc = np.mean(b_true == b_pred) * 100.0
+        adj_acc = np.mean(np.abs(b_true - b_pred) <= 1) * 100.0
+
+        print(f"[Stacking Ensemble Head Fit Complete]:")
+        print(f"  - Validation RMSE           : {rmse:.4f}")
+        print(f"  - Validation R² Score       : {r2:.4f}")
+        print(f"  - Exact CEFR Band Accuracy  : {exact_acc:.2f}% (Target: >90%)")
+        print(f"  - Adjacent Band Accuracy    : {adj_acc:.2f}%")
+
+        self.xgb_model.save_model(self.model_save_path)
+        print(f"  - Stacking Primary Model saved to -> {self.model_save_path}")
+
+    def predict(self, X: np.ndarray) -> np.ndarray:
+        p1 = self.xgb_model.predict(X)
+        p2 = self.gb_model.predict(X)
+        p3 = self.rf_model.predict(X)
+        preds = (self.meta_weights[0] * p1) + (self.meta_weights[1] * p2) + (self.meta_weights[2] * p3)
+        return np.clip(preds, 1.00, 6.00)
+
 def train_and_save_xgboost_head(X: np.ndarray, y: np.ndarray, model_save_path: str = "cefr_xgboost_head.json"):
-    """
-    Fits XGBoost Regressor on extracted 22-D multimodal features and MFRM target CEFR scores.
-    """
-    X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.15, random_state=42)
-
-    xgb_model = xgb.XGBRegressor(
-        n_estimators=300,
-        max_depth=4,
-        learning_rate=0.03,
-        subsample=0.85,
-        colsample_bytree=0.85,
-        objective="reg:squarederror",
-        random_state=42
-    )
-
-    xgb_model.fit(X_train, y_train, eval_set=[(X_val, y_val)], verbose=False)
-
-    val_preds = xgb_model.predict(X_val)
-    rmse = root_mean_squared_error(y_val, val_preds)
-    r2 = r2_score(y_val, val_preds)
-    print(f"[XGBoost Calibration] Validation RMSE: {rmse:.4f} | R² Score: {r2:.4f}")
-
-    xgb_model.save_model(model_save_path)
-    print(f"[XGBoost Calibration] Model saved to {model_save_path}")
-    return xgb_model
+    ensemble = CEFRStackingEnsembleHead(model_save_path)
+    ensemble.fit(X, y)
+    return ensemble.xgb_model
 
 if __name__ == "__main__":
     np.random.seed(42)
     N = 600
-    X_sim = np.random.randn(N, 22).astype(np.float32)
-    latent = (0.35 * X_sim[:, 0]) + (0.20 * X_sim[:, 10]) + (0.25 * X_sim[:, 16]) + (0.20 * X_sim[:, 18])
+    X_sim = np.random.randn(N, 32).astype(np.float32)
+    latent = (0.35 * X_sim[:, 0]) + (0.20 * X_sim[:, 10]) + (0.25 * X_sim[:, 16]) + (0.20 * X_sim[:, 18]) + (0.15 * X_sim[:, 28])
     y_sim = np.clip(3.20 + (((latent - np.mean(latent)) / np.std(latent)) * 0.95), 1.00, 6.00)
     train_and_save_xgboost_head(X_sim, y_sim)
