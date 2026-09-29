@@ -8,21 +8,9 @@ evaluates any audio recording against a speaking task/question prompt.
 Supports CPU and GPU inference, automatic audio standardization (16 kHz Mono),
 verbatim transcription, multimodal feature extraction, and continuous CEFR scoring.
 
-Programmatic Usage:
--------------------
-    from inference import SpeechInferenceEngine
-
-    # Load models into memory once (CPU or CUDA)
-    engine = SpeechInferenceEngine(device="cpu")
-
-    # Run inference on any audio recording and prompt
-    result = engine.predict(
-        audio_path="candidate_response.mp3",
-        question="Describe a situation where you had to lead a project under tight deadlines."
-    )
-
-    print("CEFR Band:", result["scores"]["cefr_band"])
-    print("Continuous Score:", result["scores"]["cefr_continuous"])
+Interactive Mode:
+-----------------
+    python inference.py
 
 CLI Usage:
 ----------
@@ -166,13 +154,13 @@ def parse_args():
     parser.add_argument(
         "--audio", "-a",
         type=str,
-        default=str(STANDARDIZED_AUDIO_DIR / "sample1.wav"),
+        default=None,
         help="Path to the input speech recording (.wav, .mp3, .flac, etc.)."
     )
     parser.add_argument(
         "--question", "-q", "--prompt", "-p",
         type=str,
-        default="Describe a situation where you had to lead a project under tight deadlines.",
+        default=None,
         help="Speaking prompt or question presented to the candidate."
     )
     parser.add_argument(
@@ -196,11 +184,58 @@ def parse_args():
     return parser.parse_args()
 
 
+def prompt_user_inputs(default_audio: str, default_question: str) -> tuple[str, str]:
+    """
+    Explicitly prompts the user in the terminal for the recording path and question.
+    """
+    print("\n" + "=" * 68)
+    print("      INDIAN ENGLISH CEFR SPEECH ASSESSMENT - INFERENCE INPUT       ")
+    print("=" * 68)
+
+    # 1. Prompt for Audio Recording Path
+    while True:
+        audio_input = input(f"\nEnter the speech recording audio file path\n[Default: {default_audio}]: ").strip()
+        if not audio_input:
+            audio_path = default_audio
+        else:
+            audio_path = audio_input.strip("'\"")
+
+        if Path(audio_path).exists():
+            print(f"[Verified]: Audio file found -> {Path(audio_path).resolve()}")
+            break
+        else:
+            print(f"[Error]: File '{audio_path}' does not exist. Please re-enter a valid file path.")
+
+    # 2. Prompt for Question / Task
+    question_input = input(f"\nEnter the speaking prompt / question presented to the speaker\n[Default: {default_question}]: ").strip()
+    if not question_input:
+        question = default_question
+    else:
+        question = question_input
+
+    print(f"[Verified]: Question prompt -> \"{question}\"")
+    print("=" * 68 + "\n")
+    return audio_path, question
+
+
 def main():
     args = parse_args()
 
+    default_sample = str(STANDARDIZED_AUDIO_DIR / "sample1.wav")
+    default_prompt = "Describe a situation where you had to lead a project under tight deadlines."
+
+    # If --audio or --question is not provided via CLI flags, interactively ask the user
+    if args.audio is None or args.question is None:
+        audio_path, question = prompt_user_inputs(
+            default_audio=args.audio or default_sample,
+            default_question=args.question or default_prompt
+        )
+    else:
+        audio_path = args.audio
+        question = args.question
+
     engine = SpeechInferenceEngine(device=args.device)
-    result = engine.predict(audio_path=args.audio, question=args.question)
+    result = engine.predict(audio_path=audio_path, question=question)
 
     if args.output:
         out_file = Path(args.output)
