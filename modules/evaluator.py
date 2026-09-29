@@ -13,13 +13,20 @@ from modules.phonetic_scorer import calculate_aligned_gop
 from scripts.download_models_and_datasets import ensure_sample_audio_exists
 
 class SpeechEvaluator:
-    def __init__(self, xgb_model_path: str = None):
+    def __init__(self, xgb_model_path: str = None, device: str = None):
         if xgb_model_path is None:
             self.xgb_model_path = PROJECT_ROOT / "cefr_xgboost_head.json"
         else:
             self.xgb_model_path = Path(xgb_model_path)
             
-        self.asr_engine = IndicConformerASR()
+        if device is None:
+            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        elif isinstance(device, str):
+            self.device = torch.device(device)
+        else:
+            self.device = device
+
+        self.asr_engine = IndicConformerASR(device=self.device)
         self.feature_extractor = MultimodalFeatureExtractor()
         
         self.regressor = xgb.XGBRegressor()
