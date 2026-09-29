@@ -43,12 +43,20 @@ class IndicConformerASR:
         
         print(f"[ASR Engine]: Initializing IndicConformer ASR ({self.model_status}) on {self.device}...")
         try:
-            self.model = AutoModel.from_pretrained(
-                load_target,
-                trust_remote_code=True,
-                token=hf_token
-            ).to(self.device)
-            self.model.eval()
+            if base_dir.exists():
+                sys.path.insert(0, str(base_dir))
+                from model_onnx import IndicASRModel, IndicASRConfig
+                self.model = IndicASRModel(IndicASRConfig(ts_folder=str(base_dir)))
+            else:
+                self.model = AutoModel.from_pretrained(
+                    load_target,
+                    trust_remote_code=True,
+                    token=hf_token
+                )
+            if hasattr(self.model, "to"):
+                self.model = self.model.to(self.device)
+            if hasattr(self.model, "eval"):
+                self.model.eval()
             print("[ASR Engine]: IndicConformer model loaded successfully.")
         except Exception as e:
             print(f"[ASR Engine Warning]: Gated/Direct model fallback: {e}")
