@@ -4,11 +4,7 @@ import torch
 import torchaudio
 from pathlib import Path
 from typing import List, Dict
-
-DATASETS_DIR = Path("/workspaces/speec_scorer/datasets")
-PROCESSED_DIR = Path("/workspaces/speec_scorer/data/processed")
-DATASETS_DIR.mkdir(parents=True, exist_ok=True)
-PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
+from modules.config import DATASETS_DIR, PROCESSED_DIR, STANDARDIZED_AUDIO_DIR
 
 def prepare_indian_accent_manifests():
     """
@@ -21,8 +17,6 @@ def prepare_indian_accent_manifests():
     train_samples: List[Dict] = []
     val_samples: List[Dict] = []
     
-    # 1. Inspect standardized local audio files in data/standardized_16k
-    std_dir = Path("/workspaces/speec_scorer/data/standardized_16k")
     sample_transcripts = {
         "030880003.wav": "I have been working as a software developer in Bangalore for three years.",
         "030880015.wav": "The team successfully completed the migration project before the quarterly deadline.",
@@ -46,14 +40,13 @@ def prepare_indian_accent_manifests():
         "030880173.wav": "Quantized ONNX models enable low latency inference on edge compute environments."
     }
 
-    if std_dir.exists():
-        wav_files = list(std_dir.glob("*.wav"))
-        print(f"[Dataset Loader]: Found {len(wav_files)} audio samples in {std_dir}")
+    if STANDARDIZED_AUDIO_DIR.exists():
+        wav_files = list(STANDARDIZED_AUDIO_DIR.glob("*.wav"))
+        print(f"[Dataset Loader]: Found {len(wav_files)} audio samples in {STANDARDIZED_AUDIO_DIR}")
         for i, wav_path in enumerate(wav_files):
             filename = wav_path.name
             transcript = sample_transcripts.get(filename, "Sample Indian English utterance for speech assessment.")
             
-            # Fetch audio duration
             try:
                 info = torchaudio.info(str(wav_path))
                 duration = round(info.num_frames / info.sample_rate, 2)
@@ -61,7 +54,7 @@ def prepare_indian_accent_manifests():
                 duration = 3.5
 
             sample_entry = {
-                "audio_path": str(wav_path),
+                "audio_path": str(wav_path.resolve()),
                 "transcript": transcript,
                 "duration": duration,
                 "sample_rate": 16000,
@@ -74,7 +67,6 @@ def prepare_indian_accent_manifests():
             else:
                 train_samples.append(sample_entry)
 
-    # 2. Write manifests
     train_manifest_path = PROCESSED_DIR / "indian_accent_train.json"
     val_manifest_path = PROCESSED_DIR / "indian_accent_val.json"
     

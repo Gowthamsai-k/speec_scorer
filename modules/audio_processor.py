@@ -3,6 +3,7 @@ import torch
 import torchaudio
 import soundfile as sf
 from pathlib import Path
+from modules.config import DATA_DIR, STANDARDIZED_AUDIO_DIR
 
 def standardize_audio(input_file: str, output_file: str) -> bool:
     """
@@ -42,9 +43,9 @@ def standardize_audio(input_file: str, output_file: str) -> bool:
         print(f"[Audio Processing Failed] {input_file}: {err}")
         return False
 
-def process_directory(raw_dir: str, proc_dir: str):
-    raw_path = Path(raw_dir)
-    target_dir = Path(proc_dir)
+def process_directory(raw_dir: str = None, proc_dir: str = None):
+    raw_path = Path(raw_dir) if raw_dir else DATA_DIR / "raw"
+    target_dir = Path(proc_dir) if proc_dir else STANDARDIZED_AUDIO_DIR
     target_dir.mkdir(parents=True, exist_ok=True)
 
     audio_files = list(raw_path.glob("**/*.wav")) + list(raw_path.glob("**/*.WAV")) + list(raw_path.glob("**/*.flac"))
@@ -59,6 +60,6 @@ def process_directory(raw_dir: str, proc_dir: str):
 
 if __name__ == "__main__":
     import sys
-    raw = sys.argv[1] if len(sys.argv) > 1 else "/workspaces/speec_scorer/data/raw"
-    proc = sys.argv[2] if len(sys.argv) > 2 else "/workspaces/speec_scorer/data/standardized_16k"
+    raw = sys.argv[1] if len(sys.argv) > 1 else str(DATA_DIR / "raw")
+    proc = sys.argv[2] if len(sys.argv) > 2 else str(STANDARDIZED_AUDIO_DIR)
     process_directory(raw, proc)

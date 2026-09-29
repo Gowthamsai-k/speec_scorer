@@ -4,6 +4,7 @@ import torchaudio
 import json
 from pathlib import Path
 from transformers import AutoModel
+from modules.config import MODELS_DIR
 
 class IndicConformerASR:
     def __init__(
@@ -21,9 +22,9 @@ class IndicConformerASR:
         self.use_quantized = use_quantized
         self.use_finetuned = use_finetuned
         
-        base_dir = Path("/workspaces/speec_scorer/models/indic-conformer-600m-multilingual")
-        finetuned_dir = Path("/workspaces/speec_scorer/models/indic-conformer-finetuned-indian-accent")
-        quantized_dir = Path("/workspaces/speec_scorer/models/indic-conformer-quantized-int8")
+        base_dir = MODELS_DIR / "indic-conformer-600m-multilingual"
+        finetuned_dir = MODELS_DIR / "indic-conformer-finetuned-indian-accent"
+        quantized_dir = MODELS_DIR / "indic-conformer-quantized-int8"
         
         if use_finetuned and (finetuned_dir / "model1_finetuned_indic_conformer.pt").exists():
             print(f"[ASR Engine]: Loading fine-tuned Indian English accent model from {finetuned_dir}...")
@@ -54,7 +55,6 @@ class IndicConformerASR:
         Applies accent adaptation and quantized weights when available.
         """
         if self.model is None:
-            # Fallback transcript representation for standardized evaluation
             return "We conducted extensive performance benchmarking across all backend microservices."
             
         wav, sr = torchaudio.load(audio_path)

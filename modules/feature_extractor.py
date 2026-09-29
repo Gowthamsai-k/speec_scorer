@@ -5,6 +5,7 @@ import soundfile as sf
 import numpy as np
 import re
 from pathlib import Path
+from modules.config import MODELS_DIR
 
 INDIAN_ALLOPHONES = {
     "T":  {"T", "D"},
@@ -22,8 +23,8 @@ DISCOURSE_MARKERS = {"furthermore", "however", "consequently", "nevertheless", "
 ACADEMIC_WORDS = {"coordinate", "benchmarking", "microservices", "performance", "extending", "analysis", "demonstrated", "significant", "assessment", "evaluation", "proficiency"}
 
 class MultimodalFeatureExtractor:
-    def __init__(self, models_dir: str = "/workspaces/speec_scorer/models"):
-        self.models_dir = Path(models_dir)
+    def __init__(self, models_dir: str = None):
+        self.models_dir = Path(models_dir) if models_dir else MODELS_DIR
         print("[Feature Extractor]: Initializing Upgraded 32-Dimensional Multimodal Feature Extractor Engine...")
 
     def extract_features(self, audio_path: str, prompt: str, raw_transcript: str) -> np.ndarray:
@@ -53,9 +54,8 @@ class MultimodalFeatureExtractor:
         articulation_rate = speech_rate * 1.15
         
         filled_pauses = sum(1 for w in words if w in DISfluency_TOKENS)
-        filled_pause_rate = round(float((filled_pauses / total_sec) * 60.0), 2) # Per minute
+        filled_pause_rate = round(float((filled_pauses / total_sec) * 60.0), 2)
         
-        # Repetitions / false starts
         repair_count = 0
         for i in range(len(words) - 1):
             if words[i] == words[i+1]:
@@ -72,44 +72,33 @@ class MultimodalFeatureExtractor:
         # 4. Formant & Spectral Stability Proxies
         wav_np = wav.squeeze(0).cpu().numpy()
         f0_variance = float(np.std(wav_np) * 100.0) if len(wav_np) > 0 else 18.5
-        f1_f2_area = float(1200.0 + (num_words * 45.0)) # Formant acoustic clarity proxy
+        f1_f2_area = float(1200.0 + (num_words * 45.0))
         shimmer_stability = float(np.clip(1.0 - (repair_count * 0.05), 0.70, 0.98))
 
         # 5. Assemble 32-Dimensional Feature Vector
         features = [
-            # Acoustic & Phonetic GOP (Cols 0-4)
             86.5,                               # [0] mean_gop
             87.2,                               # [1] vowel_gop_mean
             85.8,                               # [2] consonant_gop_mean
             0.04,                               # [3] low_gop_ratio
             0.14,                               # [4] allophone_usage_rt
-            
-            # Fluency & Prosody (Cols 5-9)
             float(speech_rate),                 # [5] speech_rate
             float(articulation_rate),           # [6] articulation_rate
             0.10,                               # [7] pause_to_speech_rt
             7.5,                                # [8] mean_run_length
             float(f0_variance),                 # [9] f0_pitch_variance
-            
-            # Syntactic & Tree Structure (Cols 10-13)
             4.0,                                # [10] max_tree_depth
             2.8,                                # [11] mean_tree_depth
             1.4,                                # [12] clause_density
             float(num_words),                   # [13] mean_sent_length
-            
-            # Lexical & CEFR Distributions (Cols 14-17)
             0.52,                               # [14] pct_a1_a2
             0.34,                               # [15] pct_b1_b2
             0.14,                               # [16] pct_c1_c2
             58.4,                               # [17] mtld_diversity
-            
-            # Semantic Relevance & Perplexity (Cols 18-21)
             0.88,                               # [18] task_relevance
             0.82,                               # [19] local_coherence_mu
             0.06,                               # [20] local_coherence_sd
             14.2,                               # [21] masked_perplexity
-            
-            # NEW HIGH-ACCURACY UPGRADE FEATURES (Cols 22-31)
             filled_pause_rate,                  # [22] filled_pause_rate
             float(repair_count),                # [23] repair_correction_count
             f1_f2_area,                         # [24] f1_f2_vowel_space_area

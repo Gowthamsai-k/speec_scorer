@@ -4,24 +4,29 @@ import glob
 from pathlib import Path
 from typing import List, Dict, Tuple
 from sklearn.model_selection import train_test_split
+from modules.config import DATASETS_DIR, PROCESSED_DIR, STANDARDIZED_AUDIO_DIR
 
-def prepare_dataset_80_20_split(dataset_dir: str, output_dir: str, test_size: float = 0.20, random_seed: int = 42) -> Tuple[List[Dict], List[Dict]]:
+def prepare_dataset_80_20_split(
+    dataset_dir: str = None, 
+    output_dir: str = None, 
+    test_size: float = 0.20, 
+    random_seed: int = 42
+) -> Tuple[List[Dict], List[Dict]]:
     """
     Scans the complete dataset directory for wave files and annotations.
     Splits the complete dataset into 80% training set and 20% validation set.
-    Writes train_manifest.json and val_manifest.json to output_dir.
+    Writes train_manifest.json and val_manifest.json dynamically.
     """
-    ds_path = Path(dataset_dir)
-    out_path = Path(output_dir)
+    ds_path = Path(dataset_dir) if dataset_dir else DATASETS_DIR
+    out_path = Path(output_dir) if output_dir else PROCESSED_DIR
     out_path.mkdir(parents=True, exist_ok=True)
     
     # Locate all wav / flac files in dataset
     wav_files = list(ds_path.glob("**/*.wav")) + list(ds_path.glob("**/*.WAV")) + list(ds_path.glob("**/*.flac"))
     
-    # Also check standardized 16k directory if present
-    std_dir = Path("/workspaces/speec_scorer/data/standardized_16k")
-    if std_dir.exists():
-        wav_files += list(std_dir.glob("*.wav"))
+    # Also check standardized audio directory if present
+    if STANDARDIZED_AUDIO_DIR.exists():
+        wav_files += list(STANDARDIZED_AUDIO_DIR.glob("*.wav"))
 
     # Deduplicate by resolve path
     wav_files = sorted(list(set(wav_files)))
@@ -31,7 +36,7 @@ def prepare_dataset_80_20_split(dataset_dir: str, output_dir: str, test_size: fl
     for wav_file in wav_files:
         metadata.append({
             "utterance_id": wav_file.stem,
-            "audio_path": str(wav_file),
+            "audio_path": str(wav_file.resolve()),
             "transcript": "Sample utterance transcript for model fine tuning and assessment.",
             "prompt_id": "prompt_default",
             "accent": "Indian_English"
@@ -42,7 +47,7 @@ def prepare_dataset_80_20_split(dataset_dir: str, output_dir: str, test_size: fl
         for i in range(20):
             metadata.append({
                 "utterance_id": f"sample_{i:03d}",
-                "audio_path": f"/workspaces/speec_scorer/data/standardized_16k/sample{i+1}.wav",
+                "audio_path": str((STANDARDIZED_AUDIO_DIR / f"sample{i+1}.wav").resolve()),
                 "transcript": "Sample English sentence for training.",
                 "prompt_id": "prompt_default",
                 "accent": "Indian_English"
@@ -77,4 +82,4 @@ def prepare_dataset_80_20_split(dataset_dir: str, output_dir: str, test_size: fl
     return train_samples, val_samples
 
 if __name__ == "__main__":
-    prepare_dataset_80_20_split("/workspaces/speec_scorer/datasets", "/workspaces/speec_scorer/data/processed")
+    prepare_dataset_80_20_split()

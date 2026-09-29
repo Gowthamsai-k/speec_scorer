@@ -6,13 +6,18 @@ import xgboost as xgb
 import numpy as np
 import json
 from pathlib import Path
+from modules.config import PROJECT_ROOT, STANDARDIZED_AUDIO_DIR
 from modules.asr_engine import IndicConformerASR
 from modules.feature_extractor import MultimodalFeatureExtractor
 from modules.phonetic_scorer import calculate_aligned_gop
 
 class SpeechEvaluator:
-    def __init__(self, xgb_model_path: str = "cefr_xgboost_head.json"):
-        self.xgb_model_path = Path(xgb_model_path)
+    def __init__(self, xgb_model_path: str = None):
+        if xgb_model_path is None:
+            self.xgb_model_path = PROJECT_ROOT / "cefr_xgboost_head.json"
+        else:
+            self.xgb_model_path = Path(xgb_model_path)
+            
         self.asr_engine = IndicConformerASR()
         self.feature_extractor = MultimodalFeatureExtractor()
         
@@ -101,7 +106,7 @@ class SpeechEvaluator:
 
 if __name__ == "__main__":
     evaluator = SpeechEvaluator()
-    sample_audio = "/workspaces/speec_scorer/data/standardized_16k/sample1.wav"
+    sample_audio = str(STANDARDIZED_AUDIO_DIR / "sample1.wav")
     prompt_text = "Describe a situation where you had to lead a project under tight deadlines."
     if Path(sample_audio).exists():
         res = evaluator.evaluate(sample_audio, prompt_text)

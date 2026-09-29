@@ -3,13 +3,7 @@ import json
 import urllib.request
 from pathlib import Path
 from huggingface_hub import snapshot_download
-
-WORKSPACE_ROOT = Path("/workspaces/speec_scorer") if Path("/workspaces/speec_scorer").exists() else Path(os.getcwd())
-MODELS_DIR = WORKSPACE_ROOT / "models"
-DATASETS_DIR = WORKSPACE_ROOT / "datasets"
-
-MODELS_DIR.mkdir(parents=True, exist_ok=True)
-DATASETS_DIR.mkdir(parents=True, exist_ok=True)
+from modules.config import MODELS_DIR, DATASETS_DIR
 
 models_to_download = [
     ("indic-conformer-600m-multilingual", "ai4bharat/indic-conformer-600m-multilingual"),

@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import List, Dict, Tuple
 from transformers import AutoConfig, Wav2Vec2Model, Wav2Vec2PreTrainedModel
 from peft import LoraConfig, get_peft_model
+from modules.config import MODELS_DIR
 
 ARPABET_VOCAB = [
     "<pad>", "<s>", "</s>", "<unk>", "|",
@@ -68,7 +69,6 @@ def calculate_aligned_gop(
             
         segment_probs = log_probs[t_start:t_end]
         
-        # Accepted Indian Allophone candidate set A(p)
         allophone_set = INDIAN_ALLOPHONE_MAP.get(target_phone_clean, [target_phone_clean])
         allophone_ids = [phone_to_id[p] for p in allophone_set if p in phone_to_id]
         
@@ -77,13 +77,11 @@ def calculate_aligned_gop(
             
         non_allophone_ids = [idx for idx in range(len(ARPABET_VOCAB)) if idx not in allophone_ids]
         
-        # Log likelihood ratio calculation across aligned frames
         max_allo_logprobs = np.max(segment_probs[:, allophone_ids], axis=-1)
         max_compete_logprobs = np.max(segment_probs[:, non_allophone_ids], axis=-1)
         
         raw_gop = float(np.mean(max_allo_logprobs - max_compete_logprobs))
         
-        # Logistic diagnostic transfer function to [0, 100]
         score_100 = 100.0 / (1.0 + np.exp(-gamma * raw_gop))
         
         if score_100 >= 75.0:
@@ -108,7 +106,7 @@ def build_lora_phonetic_scorer(model_path_or_name: str = "ai4bharat/indicwav2vec
     if device is None:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         
-    local_dir = Path("/workspaces/speec_scorer/models/indicwav2vec-hindi")
+    local_dir = MODELS_DIR / "indicwav2vec-hindi"
     load_target = str(local_dir) if local_dir.exists() else model_path_or_name
 
     print(f"[Phonetic Scorer]: Initializing IndicWav2Vec model from {load_target}...")
