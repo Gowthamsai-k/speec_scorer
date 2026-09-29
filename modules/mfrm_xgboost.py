@@ -41,11 +41,6 @@ class CEFRStackingEnsembleHead:
     def __init__(self, model_save_path: str = None):
         self.model_save_path = model_save_path if model_save_path else str(PROJECT_ROOT / "cefr_xgboost_head.json")
         
-        # GPU Acceleration check for RTX 3070 Ampere GPUs
-        use_gpu = torch.cuda.is_available()
-        xgb_device = "cuda" if use_gpu else "cpu"
-        xgb_tree_method = "hist" if use_gpu else "auto"
-        
         self.xgb_model = xgb.XGBRegressor(
             n_estimators=350,
             max_depth=5,
@@ -53,8 +48,6 @@ class CEFRStackingEnsembleHead:
             subsample=0.85,
             colsample_bytree=0.85,
             objective="reg:squarederror",
-            tree_method=xgb_tree_method,
-            device=xgb_device,
             random_state=42
         )
         self.gb_model = GradientBoostingRegressor(
@@ -94,7 +87,6 @@ class CEFRStackingEnsembleHead:
         adj_acc = np.mean(np.abs(b_true - b_pred) <= 1) * 100.0
 
         print(f"[Stacking Ensemble Head Fit Complete]:")
-        print(f"  - GPU Acceleration          : {'Active (CUDA)' if torch.cuda.is_available() else 'CPU'}")
         print(f"  - Validation RMSE           : {rmse:.4f}")
         print(f"  - Validation R² Score       : {r2:.4f}")
         print(f"  - Exact CEFR Band Accuracy  : {exact_acc:.2f}% (Target: >90%)")

@@ -34,12 +34,15 @@ INDIAN_ALLOPHONE_MAP = {
 }
 
 class IndicWav2VecPhonemeCTC(Wav2Vec2PreTrainedModel):
+    _tied_weights_keys = []
+    _keys_to_ignore_on_load_missing = [r"phoneme_head"]
+
     def __init__(self, config):
         super().__init__(config)
         self.wav2vec2 = Wav2Vec2Model(config)
         self.dropout = nn.Dropout(0.1)
         self.phoneme_head = nn.Linear(config.hidden_size, len(ARPABET_VOCAB))
-        self.init_weights()
+        self.post_init()
 
     def forward(self, input_values, attention_mask=None):
         outputs = self.wav2vec2(input_values, attention_mask=attention_mask)
@@ -112,7 +115,7 @@ def build_lora_phonetic_scorer(model_path_or_name: str = "ai4bharat/indicwav2vec
         try:
             cfg = AutoConfig.from_pretrained(load_target)
         except Exception:
-            print(f"[Phonetic Scorer]: Gated repo fallback to open baseline 'facebook/wav2vec2-base-960h'...")
+            print(f"[Phonetic Scorer]: Fallback to open baseline 'facebook/wav2vec2-base-960h'...")
             load_target = "facebook/wav2vec2-base-960h"
             cfg = AutoConfig.from_pretrained(load_target)
             
