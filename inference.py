@@ -233,6 +233,54 @@ class SpeechInferenceEngine:
         """Alias for format_report_card for backward compatibility."""
         return self.format_report_card(result)
 
+    def get_api(
+        self,
+        audio_path: str,
+        question: str = "Describe a situation where you had to lead a project under tight deadlines.",
+        as_json_string: bool = False
+    ) -> dict | str:
+        """
+        API Endpoint method: Runs complete speech evaluation and returns the full JSON model output.
+
+        Args:
+            audio_path: Path to input audio recording.
+            question: Interview prompt / speaking question.
+            as_json_string: If True, returns a formatted JSON string; if False, returns dictionary payload.
+
+        Returns:
+            dict or formatted JSON string containing complete assessment payload.
+        """
+        result = self.predict(audio_path=audio_path, question=question)
+        if as_json_string:
+            return json.dumps(result, indent=2)
+        return result
+
+
+def get_api(
+    audio_path: str,
+    question: str = "Describe a situation where you had to lead a project under tight deadlines.",
+    device: str = "cpu",
+    as_json_string: bool = False
+) -> dict | str:
+    """
+    Standalone API function: Evaluates speech recording and returns complete model output in JSON format.
+
+    Usage:
+        from inference import get_api
+        output = get_api("sample.wav", "Tell me about yourself.")
+
+    Args:
+        audio_path: Path to audio file.
+        question: Question prompt text.
+        device: 'cpu' or 'cuda'.
+        as_json_string: If True, returns formatted JSON string; if False, returns dictionary payload.
+
+    Returns:
+        Full JSON evaluation output (dict or str).
+    """
+    engine = SpeechInferenceEngine(device=device)
+    return engine.get_api(audio_path=audio_path, question=question, as_json_string=as_json_string)
+
 
 def parse_args():
     parser = argparse.ArgumentParser(
