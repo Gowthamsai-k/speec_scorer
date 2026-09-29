@@ -824,12 +824,9 @@ class SpeechEvaluator:
             18,
         )
 
-        adjusted_score, task_fulfillment = (
-            self._apply_task_relevance_gate(
-                model_score,
-                task_relevance,
-            )
-        )
+        # Bypass semantic task relevance validation capping as requested
+        adjusted_score = model_score
+        task_fulfillment = "ON_TOPIC"
 
         adjusted_score = round(
             float(
